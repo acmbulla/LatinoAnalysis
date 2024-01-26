@@ -151,14 +151,16 @@ def createULJESchain(type, kind="Up"):
   if type == "Total":
     typeShort = ""
   toreplace = typeShort+kind.lower()
-  chainTemplate = ['do_ULJESVAR_suffix','l2Kin_JESVAR', 'l3Kin_JESVAR', 'l4Kin_JESVAR','formulasMC_JESVAR','JJHEFT_JESVAR']
+  # chainTemplate = ['do_ULJESVAR_suffix','l2Kin_JESVAR', 'l3Kin_JESVAR', 'l4Kin_JESVAR','formulasMC_JESVAR','JJHEFT_JESVAR']
+  chainTemplate = ['do_ULJESVAR_suffix','l2Kin_JESVAR', 'l3Kin_JESVAR', 'formulasMC_JESVAR']
   chain = []
   for item in chainTemplate:
     chain.append(item.replace("VAR", toreplace))
   return chain
 
 def createULJERchain(type, kind="Up"):
-  chainTemplate = ['do_ULJERVAR_suffix','l2Kin_JERVAR', 'l3Kin_JERVAR', 'l4Kin_JERVAR','formulasMC_JERVAR','JJHEFT_JERVAR']
+  # chainTemplate = ['do_ULJERVAR_suffix','l2Kin_JERVAR', 'l3Kin_JERVAR', 'l4Kin_JERVAR','formulasMC_JERVAR','JJHEFT_JERVAR']
+  chainTemplate = ['do_ULJERVAR_suffix','l2Kin_JERVAR', 'l3Kin_JERVAR','formulasMC_JERVAR']
   chain = []
   toreplace = type+kind.lower()
   for item in chainTemplate:
@@ -2977,6 +2979,24 @@ Steps = {
                   'module'     : 'Dummy()',
             },
 
+  'cleanGenJetMaker': {
+                  'isChain'    : False ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : True  ,
+                  'import'     : 'LatinoAnalysis.NanoGardener.modules.CleanGenJetMaker' ,
+                  'declare'    : 'cleanGenJetMaker = lambda : CleanGenJetMaker()' ,
+                  'module'     : 'cleanGenJetMaker()' ,
+               }, 
+               
+  'genJetSel': {
+                  'isChain'    : False ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : True  ,
+                  'import'     : 'LatinoAnalysis.NanoGardener.modules.GenJetSel' ,
+                  'declare'    : 'genJetSel = lambda : GenJetSel()' ,
+                  'module'     : 'genJetSel()' ,
+               }, 
+
   'leptonMaker': {
                   'isChain'    : False ,
                   'do4MC'      : True  ,
@@ -3943,8 +3963,8 @@ Steps = {
                 'isChain'    : True ,
                 'do4MC'      : False ,
                 'do4Data'    : True ,
-                'selection'  : '"Alt$(Lepton_pt[1],0)<=10"',
-                'subTargets' : ['fakeWstep1l','formulasFAKE1l'],
+                'selection'  : '"nLepton>=1 && Lepton_pt[0]>10 && Alt$(Lepton_pt[1],0)<=10"',
+                'subTargets' : ['fakeWstep1l'],
                   },
 
 
@@ -4383,6 +4403,15 @@ Steps = {
                   'import'     : 'LatinoAnalysis.NanoGardener.modules.GenericFormulaAdder' ,
                   'declare'    : '',
                   'module'     : 'GenericFormulaAdder(\'data/formulasToAdd_MC_RPLME_CMSSW.py\')' ,
+                 },
+
+  'trigMC_1l' : {
+                  'isChain'    : False ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : False  ,
+                  'import'     : 'LatinoAnalysis.NanoGardener.modules.GenericFormulaAdder' ,
+                  'declare'    : '',
+                  'module'     : 'GenericFormulaAdder(\'data/formulasToAdd_MC_Full2018v9.py\')' ,
                  },
 
   'formulasMCFS' : {
@@ -5162,7 +5191,8 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_METup_suffix','l2Kin_METup', 'l3Kin_METup', 'l4Kin_METup','formulasMC_METup','JJHEFT_METup'], 
+                  'subTargets' : ['do_METup_suffix','l2Kin_METup', 'l3Kin_METup', 'l4Kin_METup','formulasMC_METup'], 
+                  'subTargets' : ['do_METup_suffix','l2Kin_METup', 'l3Kin_METup', 'formulasMC_METup'], 
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5198,7 +5228,8 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_METdo_suffix','l2Kin_METdo', 'l3Kin_METdo', 'l4Kin_METdo','formulasMC_METdo','JJHEFT_METdo'] ,
+                  'subTargets' : ['do_METdo_suffix','l2Kin_METdo', 'l3Kin_METdo','formulasMC_METdo'] ,
+                  # 'subTargets' : ['do_METdo_suffix','l2Kin_METdo', 'l3Kin_METdo', 'l4Kin_METdo','formulasMC_METdo'] ,
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5273,7 +5304,7 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_ElepTup_suffix', 'trigMCKeepRun_ElepTup', 'LeptonSF_ElepTup', 'l2Kin_ElepTup', 'l3Kin_ElepTup', 'l4Kin_ElepTup', 'formulasMC_ElepTup', 'JJHEFT_ElepTup'],
+                  'subTargets' : ['do_ElepTup_suffix', 'trigMCKeepRun_ElepTup', 'LeptonSF_ElepTup', 'l2Kin_ElepTup', 'l3Kin_ElepTup','formulasMC_ElepTup'],
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5314,7 +5345,7 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_ElepTdo_suffix', 'trigMCKeepRun_ElepTdo', 'LeptonSF_ElepTdo', 'l2Kin_ElepTdo', 'l3Kin_ElepTdo', 'l4Kin_ElepTdo', 'formulasMC_ElepTdo', 'JJHEFT_ElepTdo'],
+                  'subTargets' : ['do_ElepTdo_suffix', 'trigMCKeepRun_ElepTdo', 'LeptonSF_ElepTdo', 'l2Kin_ElepTdo', 'l3Kin_ElepTdo', 'formulasMC_ElepTdo'],
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5428,7 +5459,7 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_MupTup_suffix', 'trigMCKeepRun_MupTup', 'LeptonSF_MupTup', 'l2Kin_MupTup', 'l3Kin_MupTup', 'l4Kin_MupTup', 'formulasMC_MupTup', 'JJHEFT_MupTup'],
+                  'subTargets' : ['do_MupTup_suffix', 'trigMCKeepRun_MupTup', 'LeptonSF_MupTup', 'l2Kin_MupTup', 'l3Kin_MupTup','formulasMC_MupTup'],
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5451,7 +5482,7 @@ Steps = {
                   'isChain'    : True ,
                   'do4MC'      : True  ,
                   'do4Data'    : False  ,
-                  'subTargets' : ['do_MupTdo_suffix', 'trigMCKeepRun_MupTdo', 'LeptonSF_MupTdo', 'l2Kin_MupTdo', 'l3Kin_MupTdo', 'l4Kin_MupTdo', 'formulasMC_MupTdo', 'JJHEFT_MupTdo'],
+                  'subTargets' : ['do_MupTdo_suffix', 'trigMCKeepRun_MupTdo', 'LeptonSF_MupTdo', 'l2Kin_MupTdo', 'l3Kin_MupTdo','formulasMC_MupTdo'],
                   'outputbranchsel': os.getenv('CMSSW_BASE') + '/src/LatinoAnalysis/NanoGardener/python/data/keepsysts.txt'
                },
 
@@ -5722,6 +5753,80 @@ Steps = {
                   'selection'  : '"((MET_pt < 20 || PuppiMET_pt < 20) && mtw1 < 20)"' ,
                  },
 
+  'fakeSelVBFW'    : {
+                  'isChain'    : False ,
+                  'do4MC'      : False  ,
+                  'do4Data'    : True  ,
+                  'selection'  : '" (Alt$(CleanJet_pt[0],0.)>40. && Alt$(CleanJet_pt[1],0.)>30.) \
+                                    && (Alt$(Lepton_eta[0],-3) > -2.) && (Alt$(Lepton_eta[0],3) < 2.) \
+                                    && mtw1 < 20 && CleanJet_pt[1]<=70. \
+                                    && (MET_pt < 60 || PuppiMET_pt < 60)"',
+                 },
+ 
+  'DATAmjjgr400'    : {
+                  'isChain'    : False ,
+                  'do4MC'      : False  ,
+                  'do4Data'    : True  ,
+                  'selection'  : '" mjj > 400 "' ,
+                 },
+ 
+  'MCmjjgr400'    : {
+                  'isChain'    : False ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : False  ,
+                  'selection'  : '" mjj > 400 "' ,
+                 },
+
+
+  'fakeSelKinMCVBFW'  : {
+                  'isChain'    : True ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : False  , 
+                  'selection'  : '" (Alt$(CleanJet_pt[0],0.)>40. && Alt$(CleanJet_pt[1],0.)>30.) \
+                                    && (Alt$(Lepton_eta[0],-3) > -2.) && (Alt$(Lepton_eta[0],3) < 2.) \
+                                    && mtw1 < 20 && CleanJet_pt[1]<=70. \
+                                    && (MET_pt < 60 || PuppiMET_pt < 60)"',
+                  'onlySample' : [
+                  #                 #### DY
+                                  'DYJetsToLL_M-10to50_LO', 
+                                  'DYJetsToLL_M-10to50','DYJetsToLL_M-50','DYJetsToLL_M-10to50ext3','DYJetsToLL_M-50-LO','DYJetsToLL_M-50-LO-ext1','DYJetsToLL_M-10to50-LO',
+                                  'DYJetsToTT_MuEle_M-50','DYJetsToLL_M-50_ext2','DYJetsToLL_M-10to50-LO-ext1',
+                                  'DYJetsToLL_M-50-LO_ext1','DYJetsToLL_M-50-LO_ext2','DYJetsToLL_M-10to50-LO_ext1',
+                  #                  # ... Low Mass HT
+                                  # 'DYJetsToLL_M-4to50_HT-100to200',
+                                  # 'DYJetsToLL_M-4to50_HT-100to200-ext1',
+                                  # 'DYJetsToLL_M-4to50_HT-200to400',
+                                  # 'DYJetsToLL_M-4to50_HT-200to400-ext1',
+                                  # 'DYJetsToLL_M-4to50_HT-400to600',
+                                  # 'DYJetsToLL_M-4to50_HT-400to600-ext1',
+                                  # 'DYJetsToLL_M-4to50_HT-600toInf',
+                                  # 'DYJetsToLL_M-4to50_HT-600toInf-ext1',
+                  #                  # ... high Mass HT
+                                  # 'DYJetsToLL_M-50_HT-100to200',
+                                  # 'DYJetsToLL_M-50_HT-200to400',
+                                  # 'DYJetsToLL_M-50_HT-400to600',
+                                  # 'DYJetsToLL_M-50_HT-600to800',
+                                  # 'DYJetsToLL_M-50_HT-800to1200',
+                                  # 'DYJetsToLL_M-50_HT-1200to2500',
+                                  # 'DYJetsToLL_M-50_HT-2500toInf',
+ 
+                  #                 ####
+                                  'WJetsToLNu-LO',
+                                  'WJetsToLNu','WJetsToLNuToHT100_200','WJetsToLNu_HT200To400','WJetsToLNu_HT400To600','WJetsToLNuToHT600_800',
+                                  'WJetsToLNu_HT800To1200','WJetsToLNu_HT1200To2500','WJetsToLNu_HT2500ToInf',
+                  #                 ####
+                  #                 'QCD_Pt-15to20_EMEnriched', 'QCD_Pt-20to30_EMEnriched', 'QCD_Pt-30to50_EMEnriched', 'QCD_Pt-50to80_EMEnriched','QCD_Pt-50to80_EMEnriched_ext1',
+                  #                 'QCD_Pt-20toInf_MuEnrichedPt15','QCD_Pt-30toInf_DoubleEMEnriched','QCD_Pt-15to20_MuEnrichedPt5',
+                  #                 ####
+                  #                 'QCD_Pt_15to20_bcToE','QCD_Pt_20to30_bcToE','QCD_Pt_30to80_bcToE','QCD_Pt_80to170_bcToE',
+                  #                 'QCD_Pt_170to250_bcToE','QCD_Pt_250toInf_bcToE',
+                  #                 ####
+                                  'TTTo2L2Nu','TTToSemiLeptonic', 'ST_s-channel', 'ST_t-channel_antitop', 'ST_t-channel_top','ST_tW_antitop', 'ST_tW_top',
+                  #                 ###
+
+                                 ] ,               
+                  'subTargets' : ['baseW','rochesterMC','trigMC','puW','l2Kin', 'l3Kin', 'l4Kin','formulasMCnoSF'] ,
+                 },
 
   'fakeSelKinMC'  : {
                   'isChain'    : True ,
@@ -5816,6 +5921,15 @@ Steps = {
                                   'GJets_HT40To100-ext1',
                                  ] ,               
                  },
+
+  'genStepVBFW' : {
+                  'isChain'    : True  ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : False ,
+                  'subTargets' : ['cleanGenJetMaker','genJetSel'],
+                   'onlySample' : ['Wm_LNuJJ_EWK', 'Wp_LNuJJ_EWK'],
+                  },
+
 
 ## ------- 2-Leptons: Loose / tightOR
 

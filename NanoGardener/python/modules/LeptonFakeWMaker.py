@@ -510,6 +510,7 @@ class LeptonFakeWMaker(Module):
         # Prepare leptons 
         lepton_col   = Collection(event, 'Lepton')
         nLep = len(lepton_col)
+        # print("DEBUGG::: nLep = ", nLep)
 
         Leptons = {}
         for iTag in self.FakeWeights: Leptons[iTag] = {}
@@ -547,6 +548,8 @@ class LeptonFakeWMaker(Module):
                      Leptons[iTag][selectedLepton] = [kindLep, pt, eta, IsTightLepton]
 
                    selectedLepton += 1
+
+        # print("DEBUGG::: selectedLepton = ", selectedLepton)
 
         # Now compute the fakes 
         for iTag in self.FakeWeights:
@@ -615,3 +618,7 @@ class LeptonFakeWMaker(Module):
                self.out.fillBranch('fakeW_'+iTag+'_4lstatElDown'  , self.FakeWeights[iTag]['fakeW']._get4lWeight(Leptons[iTag], 'MuFR_jet35', 'ElFR_jet35', 'ElDown') )
 
         return True
+
+
+
+

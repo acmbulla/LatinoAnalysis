@@ -16,9 +16,19 @@ Sites = {
   'cern' : {
               'lsCmd'       : 'ls' ,
               'mkDir'       : True ,
-              'xrootdPath'  : 'root://eoscms.cern.ch/' ,
-              'treeBaseDir' : '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano/' ,
-              #'treeBaseDir' : '/eos/cms/store/group/phys_smp/ec/Latinos/HWWNano/',
+              ## from massiro (or Latinos)
+              'xrootdPath'  : 'root://eosuser.cern.ch/' ,
+              ## from myself
+              # 'xrootdPath'  : 'root://eoshome-a.cern.ch/',
+              # 'xrootdPath'  : 'root://eoscms.cern.ch/' ,
+             'treeBaseDir' : '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano/' ,
+             'treeBaseDirSource' : '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano/' ,
+             'treeBaseDirOut' : '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano/' ,
+            #  'treeBaseDirSource' : '/eos/cms/store/group/phys_smp/Latinos/vbfw/' ,  
+            #  'treeBaseDir' : '/eos/cms/store/group/phys_smp/Latinos/vbfw/' ,
+            #  'treeBaseDirOut' : '/eos/cms/store/group/phys_smp/Latinos/vbfw/' ,
+              # 'treeBaseDir' : '/eos/user/a/abulla/nanoAOD/EFT/nano',
+              # 'treeBaseDirOut' : '/eos/user/a/abulla/nanoAOD/EFT/nano',
               'batchQueues' : ['8nh','1nd','2nd','1nw'],
               'slc_ver'     : 7
            } ,

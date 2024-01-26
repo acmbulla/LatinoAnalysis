@@ -29,8 +29,12 @@ class PostProcMaker():
 
      self._cmsswBasedir = os.environ["CMSSW_BASE"]
 
-     #self._aaaXrootd = 'root://cms-xrd-global.cern.ch//'
+    # uncomment the following line to take data from tier2/3
+    #  self._aaaXrootd = 'root://cms-xrd-global.cern.ch//'
+     # uncomment the following line to take data from massiro (or lat)
      self._aaaXrootd = 'root://xrootd-cms.infn.it/'
+     # uncomment the following line to take data from myself
+    #  self._aaaXrootd = 'root://eoshome-a.cern.ch/'
 
      self._haddnano  = 'PhysicsTools/NanoAODTools/scripts/haddnano.py'
      if '/usr/lib64/python2.7/site-packages' not in sys.path:
@@ -73,6 +77,10 @@ class PostProcMaker():
 
      # We need a Proxy !
      self.checkProxy()
+
+     # Problems handling with large files
+     self._splitEntries = None
+
 
 
 
@@ -317,12 +325,15 @@ class PostProcMaker():
      self._targetDir = None
      self._sourceDir = None
      if not self._iniStep == 'Prod' :
-       self._sourceDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'+self._iniStep+'/'
+       self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/EFT/nano/hadd/'+'/'+iProd+'/'+self._iniStep+'/'
 
 
      if not iStep == 'UEPS' :
 
-       self._targetDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'
+       self._targetDir = self._Sites[self._LocalSite]['treeBaseDirOut']+'/'+iProd+'/'
        if not self._iniStep == 'Prod' : self._targetDir += self._iniStep+'__'+iStep+'/'
        else                           : self._targetDir += iStep+'/'
        
@@ -609,41 +620,67 @@ class PostProcMaker():
            return
 
          fPy.write('                          '+self.customizeModule(iSample, s)+',\n')
-
-     fPy.write('p = PostProcessor(  "."   ,          \n')
-     fPy.write('                    files ,          \n')
+     spacing = ""
+     if(self._splitEntries is not None):
+      spacing = r'        '
+      fPy.write('nSplit = {}\n'.format(self._splitEntries))
+      fPy.write('for f in sourceFiles:\n')
+      fPy.write('    file1 = ROOT.TFile(f)\n')
+      fPy.write('    tree = file1.Get("Events")\n')
+      fPy.write('    entries = tree.GetEntries()\n')
+      fPy.write('    events_per_iteration = int(entries / nSplit)\n')
+      fPy.write(' \n')
+      fPy.write('    for i in range(nSplit):\n')
+      fPy.write('        first_entry = i * events_per_iteration\n')
+      fPy.write('        max_entries = events_per_iteration if i < nSplit - 1 else (entries - first_entry)\n')
+     fPy.write('{}p = PostProcessor(  "."   ,          \n'.format(spacing))
+     fPy.write('{}                    files ,          \n'.format(spacing))
      if jsonFile != None:
-       fPy.write('                    jsonInput='+jsonFile+' ,       \n')
+       fPy.write('{}                    jsonInput='.format(spacing)+jsonFile+' ,       \n')
      if 'selection' in self._Steps[iStep] :
-       fPy.write('                    cut='+self._Steps[iStep]['selection']+' ,       \n')
+       fPy.write('{}                    cut='.format(spacing)+self._Steps[iStep]['selection']+' ,       \n')
      else:
-       fPy.write('                    cut=None ,       \n')
+       fPy.write('{}                    cut=None ,       \n'.format(spacing))
      if 'branchsel' in self._Steps[iStep] :
-       fPy.write('                    branchsel="'+self._Steps[iStep]['branchsel']+'",       \n')
+       fPy.write('{}                    branchsel="'.format(spacing)+self._Steps[iStep]['branchsel']+'",       \n')
      else:
-       fPy.write('                    branchsel=None , \n')
+       fPy.write('{}                    branchsel=None , \n'.format(spacing))
      if 'outputbranchsel' in self._Steps[iStep]:
-       fPy.write('                    outputbranchsel="'+self._Steps[iStep]['outputbranchsel']+'",       \n')
+       fPy.write('{}                    outputbranchsel="'.format(spacing)+self._Steps[iStep]['outputbranchsel']+'",       \n')
      else:
-       fPy.write('                    outputbranchsel=None , \n')
-     fPy.write('                    modules=[        \n')
+       fPy.write('{}                    outputbranchsel=None , \n'.format(spacing))
+     fPy.write('{}                    modules=[        \n'.format(spacing))
 
      addModuleLines(iStep)
 
-     fPy.write('                            ],      \n')
-     fPy.write('                    provenance=True, \n')
+     fPy.write('{}                            ],      \n'.format(spacing))
+     fPy.write('{}                    provenance=True, \n'.format(spacing))
      if self._jobMode == 'Crab':
-       fPy.write('                    fwkJobReport=True, \n')
+       fPy.write('{}                    fwkJobReport=True, \n'.format(spacing))
      else:
-       fPy.write('                    fwkJobReport=False, \n')
-     if not haddFileName == None :
-       fPy.write('                    haddFileName="'+haddFileName+'", \n')
-     fPy.write('                 ) \n')
+       fPy.write('{}                    fwkJobReport=False, \n'.format(spacing))
+     if not haddFileName == None:
+      if self._splitEntries is None:
+        fPy.write('{}                    haddFileName="'.format(spacing)+haddFileName+'", \n')
+      else:
+        name_splitted = haddFileName.split(".root")[0]+"__split{}.root"
+        fPy.write('{}                    haddFileName="'.format(spacing)+name_splitted+'".format(i), \n')
+        fPy.write('{}                    firstEntry = first_entry, \n'.format(spacing))
+        fPy.write('{}                    maxEntries = max_entries, \n'.format(spacing))
+     fPy.write('{}                 ) \n'.format(spacing))
      fPy.write(' \n')
 
      # Common footer
-     fPy.write('p.run() \n')
+     fPy.write('{}p.run() \n'.format(spacing))
      fPy.write(' \n')
+
+     if self._splitEntries is not None:
+      fPy.write('haddnano = "./haddnano.py" if os.path.isfile("./haddnano.py") else "haddnano.py"\n')
+      # fPy.write('os.system("\{\} \{\} \{\}".format(haddnano, "*split*", {})) \n'.format(haddFileName))
+      fPy.write('os.system("{{}} {{}} {{}}".format(haddnano, "{}", "*split*root")) \n'.format(haddFileName))
+
+      fPy.write('os.system("rm *split*root")')
+      fPy.write(' \n')
 
      fPy.write('for fname in files:\n')
      fPy.write('    try:\n')
@@ -978,7 +1015,7 @@ class PostProcMaker():
 
          for iUEPS in self._Steps[iStep]['cpMap'] :
            if iSample in self._Steps[iStep]['cpMap'][iUEPS]:
-             self._targetDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'+self._iniStep+'__'+iUEPS+'/'
+             self._targetDir = self._Sites[self._LocalSite]['treeBaseDirOut']+'/'+iProd+'/'+self._iniStep+'__'+iUEPS+'/'
              for tSample in self._Steps[iStep]['cpMap'][iUEPS][iSample] :
                nin = len(FileInList)
 

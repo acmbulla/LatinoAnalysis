@@ -30,6 +30,8 @@ formulas['XSWeight'] = 'event.baseW*\
                         event.genWeight \
                         if hasattr(event, \'genWeight\') else event.baseW'
 
+formulas['MC_trig1l'] = '(event.HLT_IsoMu24 or\
+                           event.HLT_Ele32_WPTight_Gsf )'
 
 formulas['SFweight2l'] = 'event.puWeight*\
                           (  event.HLT_Mu23_TrkIsoVVL_Ele12_CaloIdL_TrackIdL_IsoVL or\

@@ -43,6 +43,7 @@ if __name__ == '__main__':
     parser.add_option("-i","--iniStep",   dest="iniStep"   , help="Step to restart from"                      , default='Prod' , type='string' )
     parser.add_option("-T", "--selTree",   dest="selTree" , help="Select only some tree (comma separated list)" , default=[]     , type='string' , action='callback' , callback=list_maker('selTree',','))
     parser.add_option("-E", "--excTree",   dest="excTree" , help="Exclude some tree (comma separated list)" , default=[]     , type='string' , action='callback' , callback=list_maker('excTree',','))
+    parser.add_option("-Z", "--splitEntries",   dest="splitEntries" , help="How many chunks of entries you want to process the file with (helps dealing with large files)" , default=None     , type='int' )
 
     # --- How to run:
     parser.add_option("-n", "--dry-run",    dest="pretend", help="(use with -v) just list the datacards that will go into this combination", default=False, action="store_true")
@@ -138,6 +139,9 @@ if __name__ == '__main__':
     factory._iniStep     = options.iniStep
     factory._selTree     = options.selTree
     factory._excTree     = options.excTree
+
+    # Helps dealing with large input files (prevents I/O root error)
+    factory._splitEntries     = options.splitEntries
 
     # job mode = Interactive / Batch / Crab / DryRun
     factory._redo        = options.redo
