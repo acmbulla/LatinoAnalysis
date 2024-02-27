@@ -329,6 +329,7 @@ class PostProcMaker():
        self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/EFT/nano/hadd/'+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/interference/reco_inter/'+'/'+iProd+'/'+self._iniStep+'/'
 
 
      if not iStep == 'UEPS' :

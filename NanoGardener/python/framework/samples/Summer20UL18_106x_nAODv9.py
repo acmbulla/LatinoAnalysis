@@ -461,3 +461,6 @@ Samples['VBFHToWWToLNuQQ_M125'] = {'nanoAOD' : '/VBFHToWWToLNuQQ_M-125_TuneCP5_w
 
 ### amc VBF-W EFT samples
 Samples['WLNuJJ_EWK_EFT'] = {'srmPrefix':'root://eoshome-a.cern.ch/', 'paths' :['/eos/user/a/abulla/nanoAOD/EFT/nano/hadd']}
+
+## vbfw interference samples
+Samples['WLNuJJ_EWK_QCD_interference'] = {'srmPrefix':'root://eoshome-a.cern.ch/', 'paths' :['/eos/user/a/abulla/nanoAOD/interference/reco_inter']}

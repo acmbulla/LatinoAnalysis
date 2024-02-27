@@ -489,3 +489,6 @@ samples['DYJetsToLL_M-4to50_HT-600toInf']                 .extend( ['xsec=1.192'
 
 ## EFT dim 6 EWKWjj
 samples['WLNuJJ_EWK_EFT'].extend( ['xsec=44.69397',     'kfact=1.000',   'ref=Z' ])
+
+## vbfw qcd ewk interference
+samples['WLNuJJ_EWK_QCD_interference'].extend( ['xsec=1.817',     'kfact=1.000',   'ref=Z' ])
