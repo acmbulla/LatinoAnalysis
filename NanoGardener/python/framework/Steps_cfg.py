@@ -1213,7 +1213,15 @@ Steps = {
                   'isChain'    : True  ,
                   'do4MC'      : True  ,
                   'do4Data'    : False ,
-                  'subTargets' : ['cleanGenJetMaker','genJetSel','DressedLeptons', 'baseW', 'formulasToAdd_MC_vbfGEN.py'],
+                  'subTargets' : ['cleanGenJetMaker','genJetSel','DressedLeptons'],
+                  'onlySample' : ['Wm_LNuJJ_EWK', 'Wp_LNuJJ_EWK'],
+                  },
+
+  'iniGENStep2' :  {
+                  'isChain'    : True  ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : False ,
+                  'subTargets' : ['baseW', 'formulasMC_vbfw', 'l2KinGen'],
                   'onlySample' : ['Wm_LNuJJ_EWK', 'Wp_LNuJJ_EWK'],
                   },
 
@@ -1224,6 +1232,7 @@ Steps = {
                   'selection'  : '"((nElectron+nMuon)>0)"' ,
                   'subTargets' : ['leptonMaker','lepSel','jetSelUL'],
                   },
+                  
   'MCCorr2018v9_WS' : {
                      'isChain'    : True  ,
                      'do4MC'      : True  ,
@@ -1950,6 +1959,13 @@ Steps = {
                   'do4Data'    : True  ,
                   'subTargets' : ['rochesterDATA','jetSel','CleanJetCut','l2Kin', 'l3Kin', 'l4Kin','formulasDATA'],
                 },
+
+  'DATACorr2018v9' : {
+                'isChain'    : True  ,
+                'do4MC'      : False ,
+                'do4Data'    : True  ,
+                'subTargets' : ['JERempty'],
+              },
 
   'DATAl1loose2018': {
                   'isChain'    : True  ,
@@ -3522,6 +3538,15 @@ Steps = {
                   'module'     : 'JERMakerMCUL_highPt()',
                  },
 
+   'JERempty': {
+                  'isChain'    : False ,
+                  'do4MC'      : False  ,
+                  'do4Data'    : True  ,
+                  'import'     : 'LatinoAnalysis.NanoGardener.modules.JERMakerDATA' ,
+                  'declare'    : 'JERempty = lambda : JERMakerDATA(RPLME_YEAR, "RPLME_CMSSW","",jetType="AK4PFchs",jetColl="CleanJet",jerUncert=True,splitJER=True,applyAtLowPt=False)',
+                  'module'     : 'JERempty()',
+                 },
+
     'FatJERsMCUL': {
                   'isChain'    : False ,
                   'do4MC'      : True  ,
@@ -4112,6 +4137,15 @@ Steps = {
                   'import'     : 'LatinoAnalysis.NanoGardener.modules.l2KinProducer' ,
                   'declare'    : '',
                   'module'     : 'l2KinProducer()' ,
+               },  
+
+  'l2KinGen'    : {
+                  'isChain'    : False ,
+                  'do4MC'      : True  ,
+                  'do4Data'    : True  ,
+                  'import'     : 'LatinoAnalysis.NanoGardener.modules.l2KinProducerGen' ,
+                  'declare'    : '',
+                  'module'     : 'l2KinProducerGen()' ,
                },  
 
   'l2Kin_ElepTup' : {
@@ -5940,11 +5974,11 @@ Steps = {
                                  ] ,               
                  },
 
-  'genStepVBFW' : {
+  'genStepVBFW2' : {
                   'isChain'    : True  ,
                   'do4MC'      : True  ,
                   'do4Data'    : False ,
-                  'subTargets' : ['cleanGenJetMaker','genJetSel'],
+                  'subTargets' : ['cleanGenJetMaker','genJetSel','l2KinGen'],
                    'onlySample' : ['Wm_LNuJJ_EWK', 'Wp_LNuJJ_EWK'],
                   },
 

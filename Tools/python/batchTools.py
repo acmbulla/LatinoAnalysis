@@ -43,7 +43,7 @@ except NameError:
   REQUEST_CPUS = 1
 
 class batchJobs :
-   def __init__ (self,baseName,prodName,stepList,targetList,batchSplit,postFix='',usePython=False,useBatchDir=True,wDir='',JOB_DIR_SPLIT_READY=False,USE_SINGULARITY=False):
+   def __init__ (self,baseName,prodName,stepList,targetList,batchSplit,postFix='',usePython=False,useBatchDir=True,wDir='',JOB_DIR_SPLIT_READY=False,USE_SINGULARITY=False, _splitEntries=None):
      # baseName   = Gardening, Plotting, ....
      # prodName   = 21Oct_25ns , ...
      # stepList   = list of steps (like l2sel or a set of plots to produce)
@@ -91,7 +91,11 @@ class batchJobs :
          else:
            kTarget = iTarget
    
-         jName  = baseName+'__'+prodName+'__'+kStep+'__'+kTarget+postFix
+         if _splitEntries is None:
+          jName  = baseName+'__'+prodName+'__'+kStep+'__'+kTarget+postFix 
+         else:
+          jName  = baseName+'__'+prodName+'__'+kStep+'__'+kTarget+postFix+"_split"+str(_splitEntries)
+
          self.jobsDic[iStep][iTarget] = jName
          if not jName in self.jobsList: self.jobsList.append(jName)
 

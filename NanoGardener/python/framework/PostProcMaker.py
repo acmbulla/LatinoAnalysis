@@ -326,8 +326,8 @@ class PostProcMaker():
      self._sourceDir = None
      if not self._iniStep == 'Prod' :
       #  self._sourceDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'+self._iniStep+'/'
-       self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
-      #  self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
+       self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/EFT/nano/hadd/'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/interference/reco_inter/'+'/'+iProd+'/'+self._iniStep+'/'
 
@@ -395,11 +395,23 @@ class PostProcMaker():
        print "INFO: Using Local Batch"
        if 'slc7' in os.environ['SCRAM_ARCH'] and self._Sites[self._LocalSite]['slc_ver'] == 6 : use_singularity = True
        else : use_singularity = False
-       self._jobs = batchJobs('NanoGardening',iProd,[iStep],targetList,'Targets,Steps',bpostFix,JOB_DIR_SPLIT_READY=True,USE_SINGULARITY=use_singularity)
-       self._jobs.Add2All('cp '+self._cmsswBasedir+'/src/'+self._haddnano+' .')
-       self._jobs.Add2All(preBash)
-       self._jobs.AddPy2Sh()
-       self._jobs.Add2All('ls -l')
+       self._jobs = []
+       if self._splitEntries is None:
+        job = batchJobs('NanoGardening',iProd,[iStep],targetList,'Targets,Steps',bpostFix,JOB_DIR_SPLIT_READY=True,USE_SINGULARITY=use_singularity)
+        job.Add2All('cp '+self._cmsswBasedir+'/src/'+self._haddnano+' .')
+        job.Add2All(preBash)
+        job.AddPy2Sh()
+        job.Add2All('ls -l')
+        self._jobs.append(job)
+       else:
+        for i in range(self._splitEntries):
+          job = batchJobs('NanoGardening',iProd,[iStep],targetList,'Targets,Steps',bpostFix,JOB_DIR_SPLIT_READY=True,USE_SINGULARITY=use_singularity,_splitEntries=i)
+          job.Add2All('cp '+self._cmsswBasedir+'/src/'+self._haddnano+' .')
+          job.Add2All(preBash)
+          job.AddPy2Sh()
+          job.Add2All('ls -l')
+          self._jobs.append(job)
+
      # CRAB3 Init
      elif self._jobMode == 'Crab':
        print "INFO: Using CRAB3"
@@ -420,34 +432,46 @@ class PostProcMaker():
            if os.path.isfile(pyFile) : os.system('rm '+pyFile)
            outFile=self._treeFilePrefix+iTarget+'__'+iStep+'.root'
            jsonFilter = self._Productions[iProd]['jsonFile'] if 'jsonFile' in self._Productions[iProd].keys() else None
-           self.mkPyCfg(iProd,iSample,[self.getStageIn(iFile)],iStep,pyFile,outFile,self._Productions[iProd]['isData'], jsonFilter)
+           self.mkPyCfg(iProd,iSample,[self.getStageIn(iFile)],iStep,pyFile,outFile,self._Productions[iProd]['isData'], jsonFilter, self._splitEntries)
            # Stage Out command + cleaning
-           stageOutCmd  = self.mkStageOut(outFile,self._targetDic[iSample][iFile])
+
+           stageOutCmd = []
+           if self._splitEntries is None:
+            cmd  = self.mkStageOut(outFile,self._targetDic[iSample][iFile])
+            stageOutCmd.append(cmd)
+           else:
+            for i in range(self._splitEntries):
+              cmd  = self.mkStageOut(outFile,self._targetDic[iSample][iFile],_splitEntries=i)
+              stageOutCmd.append(cmd)
+
            rmGarbageCmd = 'rm '+outFile+' ; rm '+ os.path.basename(iFile).replace('.root','_Skim.root')
            # Interactive
-           if   self._jobMode == 'Interactive' :
-             command = 'cd '+wDir+' ; cp '+self._cmsswBasedir+'/src/'+self._haddnano+' . ; '+preBash+' python '+pyFile \
-                      +' ; ls -l ; '+stageOutCmd+' ; '+rmGarbageCmd
-             if not self._pretend : os.system(command)
-             else                 : print command
-           # Batch
-           elif self._jobMode == 'Batch' :
-             if use_singularity :
-               self._jobs.AddSing(iStep,iTarget,stageOutCmd)
-               self._jobs.AddSing(iStep,iTarget,rmGarbageCmd)
-             else: 
-               self._jobs.Add(iStep,iTarget,stageOutCmd)
-               self._jobs.Add(iStep,iTarget,rmGarbageCmd)
-           elif self._jobMode == 'Crab':
-             self._crab.AddInputFile(pyFile)
-             self._crab.AddCommand(iStep,iTarget,'python '+os.path.basename(pyFile))
-             self._crab.AddJobOutputFile(iStep,iTarget,outFile)
-             # TMP FIX to garbage command because of not working PhysicsTools.NanoAODTools.postprocessing.framework.postprocessor import
-             #rmGarbageCmd = 'rm '+outFile#+' ; rm '+ os.path.basename(iFile).replace('.root','_Skim.root')
-             #self._crab.setUnpackCommands(iStep,iTarget,[outFile],[stageOutCmd],[rmGarbageCmd])
-             self._crab.setUnpackCommands(iStep,iTarget,[outFile],[stageOutCmd])
+           for job,stageOutCmd_i in zip(self._jobs,stageOutCmd):
+            if   self._jobMode == 'Interactive' :
+              command = 'cd '+wDir+' ; cp '+self._cmsswBasedir+'/src/'+self._haddnano+' . ; '+preBash+' python '+pyFile \
+                        +' ; ls -l ; '+stageOutCmd_i+' ; '+rmGarbageCmd
+              if not self._pretend : os.system(command)
+              else                 : print command
+            # Batch
+            elif self._jobMode == 'Batch' :
+              if use_singularity :
+                job.AddSing(iStep,iTarget,stageOutCmd_i)
+                job.AddSing(iStep,iTarget,rmGarbageCmd)
+              else: 
+                job.Add(iStep,iTarget,stageOutCmd_i)
+                job.Add(iStep,iTarget,rmGarbageCmd)
+            elif self._jobMode == 'Crab':
+              self._crab.AddInputFile(pyFile)
+              self._crab.AddCommand(iStep,iTarget,'python '+os.path.basename(pyFile))
+              self._crab.AddJobOutputFile(iStep,iTarget,outFile)
+              # TMP FIX to garbage command because of not working PhysicsTools.NanoAODTools.postprocessing.framework.postprocessor import
+              #rmGarbageCmd = 'rm '+outFile#+' ; rm '+ os.path.basename(iFile).replace('.root','_Skim.root')
+              #self._crab.setUnpackCommands(iStep,iTarget,[outFile],[stageOutCmd],[rmGarbageCmd])
+              self._crab.setUnpackCommands(iStep,iTarget,[outFile],[stageOutCmd_i])
 
-     if   self._jobMode == 'Batch' and not self._pretend : self._jobs.Sub(self._batchQueue)
+     if   self._jobMode == 'Batch' and not self._pretend : 
+      for job in self._jobs:
+       job.Sub(self._batchQueue)
      elif self._jobMode == 'Crab':
         self._crab.mkCrabCfg()
         if not self._pretend : self._crab.Sub()
@@ -470,8 +494,10 @@ class PostProcMaker():
       else:
         return File
 
-   def mkStageOut(self,prodFile,storeFile,cpMode=False):
+   def mkStageOut(self,prodFile,storeFile,cpMode=False, _splitEntries=None):
       command=''
+      if _splitEntries is not None:
+        storeFile = storeFile.replace(".root","_split{}.root".format(_splitEntries))
       # IIHE
       if   self._LocalSite == 'iihe' :
         if self._redo :
@@ -518,180 +544,189 @@ class PostProcMaker():
         print 'ERROR: mkStageOut not available for _LocalSite = ',self._LocalSite
         exit()
 
+      # print("DEBUGG:", command)
       return command
 
-   def mkPyCfg(self,iProd,iSample,inputRootFiles,iStep,fPyName,haddFileName=None,isData=False, jsonFile=None):
+   def mkPyCfg(self,iProd,iSample,inputRootFiles,iStep,fPyName,haddFileName=None,isData=False, jsonFile=None, _splitEntries=None):
 
-
-     fPy = open(fPyName,'a')
-
-     # Common Header
-     fPy.write('#!/usr/bin/env python \n')
-     fPy.write('import os, sys \n')
-     fPy.write('import subprocess\n')
-     fPy.write('import shutil\n')
-     fPy.write('import ROOT \n')
-     fPy.write('ROOT.PyConfig.IgnoreCommandLineOptions = True \n')
-     fPy.write(' \n')
-     fPy.write('from PhysicsTools.NanoAODTools.postprocessing.framework.postprocessor import PostProcessor \n')
-     fPy.write('from LatinoAnalysis.NanoGardener.modules.Dummy import *\n')
-     fPy.write('import LatinoAnalysis.Tools.userConfig as userConfig\n')
-     fPy.write(' \n')
-
-     # Import(s) of modules
-     def addImportLines(s):
-       step = self._Steps[s]
-       if step['isChain']:
-         for subtarget in step['subTargets']:
-           addImportLines(subtarget)
-       elif 'import' in step:
-         if type(step['import']) is list:
-           for mod in step['import']:
-             fPy.write('from '+mod+' import *\n')
-         else:
-           fPy.write('from '+step['import']+' import *\n')
-
-     addImportLines(iStep)
-
-     fPy.write(' \n')
-
-     # Declaration(s) of in-line modules
-     def addDeclareLines(s):
-       step = self._Steps[s]
-       if step['isChain']:
-         for subtarget in step['subTargets']:
-           addDeclareLines(subtarget)
-       elif 'declare' in step:
-         #fPy.write(self._Steps[iStep]['declare']+'\n')
-         fPy.write(self.customizeDeclare(s, iSample)+'\n')
-
-     addDeclareLines(iStep)
-
-     fPy.write(' \n')
-
-     # Files
-     fPy.write('sourceFiles=[\n%s\n]\n\n' % (',\n'.join('    "%s"' % f for f in inputRootFiles)))
-     fPy.write('files=[]\n\n')
-
-     # Download the file locally with size validation (make maximum 5 attempts)
-     fPy.write('for source in sourceFiles:\n')
-     fPy.write('    fname = os.path.basename(source).replace(".root", "_input.root")\n')
-     fPy.write('    for att in range(5):\n')
-     fPy.write('        if source.startswith("root://"):\n')
-     fPy.write('            proc = subprocess.Popen(["xrdcp", "-f", source, "./" + fname])\n')
-     fPy.write('            proc.communicate()\n')
-     fPy.write('            if proc.returncode == 0:\n')
-     fPy.write('                out, err = subprocess.Popen(["xrdfs", source[:source.find("/", 7)], "stat", source[source.find("/", 7) + 1:]], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()\n')
-     fPy.write('                try:\n')
-     fPy.write('                    size = int(out.split("\\n")[2].split()[1])\n')
-     fPy.write('                except:\n')
-     fPy.write('                    if hasattr(userConfig, "postProcSkipSizeValidation") and userConfig.postProcSkipSizeValidation:\n')
-     fPy.write('                        sys.stderr.write("Failed to obtain original file size but skipping validation as requested by user\\n")\n')
-     fPy.write('                        break\n')
-     fPy.write('                    raise\n')
-     fPy.write('            else:\n')
-     fPy.write('                continue\n')
-     fPy.write('        else:\n')
-     fPy.write('            shutil.copyfile(source, "./" + fname)\n')
-     fPy.write('            size = os.stat(source).st_size\n')
-     fPy.write('\n')
-     fPy.write('        try:\n')
-     fPy.write('            if os.stat(os.path.basename(fname)).st_size == size:\n')
-     fPy.write('                break\n')
-     fPy.write('        except:\n')
-     fPy.write('            try:\n')
-     fPy.write('                os.unlink(os.path.basename(fname))\n')
-     fPy.write('            except:\n')
-     fPy.write('                pass\n')
-     fPy.write('    else:\n')
-     fPy.write('        raise RuntimeError("Failed to download " + source)\n\n')
-     fPy.write('    files.append(fname)\n\n')
-
-     # Configure modules
-
-     def addModuleLines(s):
-       step = self._Steps[s]
-       if step['isChain']:
-         for subtarget in step['subTargets']:
-           addModuleLines(subtarget)
-       else:
-         if (isData and 'do4Data' in step and not step['do4Data']) or (not isData and 'do4MC' in step and not step['do4MC']):
-           return
-         if not self.selectSample(iProd, s, iSample):
-           return
-
-         fPy.write('                          '+self.customizeModule(iSample, s)+',\n')
-     spacing = ""
-     if(self._splitEntries is not None):
-      spacing = r'        '
-      fPy.write('nSplit = {}\n'.format(self._splitEntries))
-      fPy.write('for f in sourceFiles:\n')
-      fPy.write('    file1 = ROOT.TFile(f)\n')
-      fPy.write('    tree = file1.Get("Events")\n')
-      fPy.write('    entries = tree.GetEntries()\n')
-      fPy.write('    events_per_iteration = int(entries / nSplit)\n')
-      fPy.write(' \n')
-      fPy.write('    for i in range(nSplit):\n')
-      fPy.write('        first_entry = i * events_per_iteration\n')
-      fPy.write('        max_entries = events_per_iteration if i < nSplit - 1 else (entries - first_entry)\n')
-     fPy.write('{}p = PostProcessor(  "."   ,          \n'.format(spacing))
-     fPy.write('{}                    files ,          \n'.format(spacing))
-     if jsonFile != None:
-       fPy.write('{}                    jsonInput='.format(spacing)+jsonFile+' ,       \n')
-     if 'selection' in self._Steps[iStep] :
-       fPy.write('{}                    cut='.format(spacing)+self._Steps[iStep]['selection']+' ,       \n')
+     if _splitEntries is not None:
+      splits = _splitEntries
      else:
-       fPy.write('{}                    cut=None ,       \n'.format(spacing))
-     if 'branchsel' in self._Steps[iStep] :
-       fPy.write('{}                    branchsel="'.format(spacing)+self._Steps[iStep]['branchsel']+'",       \n')
-     else:
-       fPy.write('{}                    branchsel=None , \n'.format(spacing))
-     if 'outputbranchsel' in self._Steps[iStep]:
-       fPy.write('{}                    outputbranchsel="'.format(spacing)+self._Steps[iStep]['outputbranchsel']+'",       \n')
-     else:
-       fPy.write('{}                    outputbranchsel=None , \n'.format(spacing))
-     fPy.write('{}                    modules=[        \n'.format(spacing))
+      splits = 1
 
-     addModuleLines(iStep)
-
-     fPy.write('{}                            ],      \n'.format(spacing))
-     fPy.write('{}                    provenance=True, \n'.format(spacing))
-     if self._jobMode == 'Crab':
-       fPy.write('{}                    fwkJobReport=True, \n'.format(spacing))
-     else:
-       fPy.write('{}                    fwkJobReport=False, \n'.format(spacing))
-     if not haddFileName == None:
-      if self._splitEntries is None:
-        fPy.write('{}                    haddFileName="'.format(spacing)+haddFileName+'", \n')
+     for i in range(splits):
+      if splits != 1:
+        fPy = open(fPyName.replace(".py","_split{}.py".format(i)),'w')
       else:
-        name_splitted = haddFileName.split(".root")[0]+"__split{}.root"
-        fPy.write('{}                    haddFileName="'.format(spacing)+name_splitted+'".format(i), \n')
-        fPy.write('{}                    firstEntry = first_entry, \n'.format(spacing))
-        fPy.write('{}                    maxEntries = max_entries, \n'.format(spacing))
-     fPy.write('{}                 ) \n'.format(spacing))
-     fPy.write(' \n')
+        fPy = open(fPyName,'w')
 
-     # Common footer
-     fPy.write('{}p.run() \n'.format(spacing))
-     fPy.write(' \n')
-
-     if self._splitEntries is not None:
-      fPy.write('haddnano = "./haddnano.py" if os.path.isfile("./haddnano.py") else "haddnano.py"\n')
-      # fPy.write('os.system("\{\} \{\} \{\}".format(haddnano, "*split*", {})) \n'.format(haddFileName))
-      fPy.write('os.system("{{}} {{}} {{}}".format(haddnano, "{}", "*split*root")) \n'.format(haddFileName))
-
-      fPy.write('os.system("rm *split*root")')
+      # Common Header
+      fPy.write('#!/usr/bin/env python \n')
+      fPy.write('import os, sys \n')
+      fPy.write('import subprocess\n')
+      fPy.write('import shutil\n')
+      fPy.write('import ROOT \n')
+      fPy.write('ROOT.PyConfig.IgnoreCommandLineOptions = True \n')
+      fPy.write(' \n')
+      fPy.write('from PhysicsTools.NanoAODTools.postprocessing.framework.postprocessor import PostProcessor \n')
+      fPy.write('from LatinoAnalysis.NanoGardener.modules.Dummy import *\n')
+      fPy.write('import LatinoAnalysis.Tools.userConfig as userConfig\n')
       fPy.write(' \n')
 
-     fPy.write('for fname in files:\n')
-     fPy.write('    try:\n')
-     fPy.write('        os.unlink(fname)\n')
-     fPy.write('        os.rename(fname.replace("_input.root", "_input_Skim.root"), fname.replace("_input.root", "_Skim.root"))\n')
-     fPy.write('    except:\n')
-     fPy.write('        pass\n')
+      # Import(s) of modules
+      def addImportLines(s):
+        step = self._Steps[s]
+        if step['isChain']:
+          for subtarget in step['subTargets']:
+            addImportLines(subtarget)
+        elif 'import' in step:
+          if type(step['import']) is list:
+            for mod in step['import']:
+              fPy.write('from '+mod+' import *\n')
+          else:
+            fPy.write('from '+step['import']+' import *\n')
 
-     # Close file
-     fPy.close()
+      addImportLines(iStep)
+
+      fPy.write(' \n')
+
+      # Declaration(s) of in-line modules
+      def addDeclareLines(s):
+        step = self._Steps[s]
+        if step['isChain']:
+          for subtarget in step['subTargets']:
+            addDeclareLines(subtarget)
+        elif 'declare' in step:
+          #fPy.write(self._Steps[iStep]['declare']+'\n')
+          fPy.write(self.customizeDeclare(s, iSample)+'\n')
+
+      addDeclareLines(iStep)
+
+      fPy.write(' \n')
+
+      # Files
+      fPy.write('sourceFiles=[\n%s\n]\n\n' % (',\n'.join('    "%s"' % f for f in inputRootFiles)))
+      fPy.write('files=[]\n\n')
+
+      # Download the file locally with size validation (make maximum 5 attempts)
+      fPy.write('for source in sourceFiles:\n')
+      fPy.write('    fname = os.path.basename(source).replace(".root", "_input.root")\n')
+      fPy.write('    for att in range(5):\n')
+      fPy.write('        if source.startswith("root://"):\n')
+      fPy.write('            proc = subprocess.Popen(["xrdcp", "-f", source, "./" + fname])\n')
+      fPy.write('            proc.communicate()\n')
+      fPy.write('            if proc.returncode == 0:\n')
+      fPy.write('                out, err = subprocess.Popen(["xrdfs", source[:source.find("/", 7)], "stat", source[source.find("/", 7) + 1:]], stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()\n')
+      fPy.write('                try:\n')
+      fPy.write('                    size = int(out.split("\\n")[2].split()[1])\n')
+      fPy.write('                except:\n')
+      fPy.write('                    if hasattr(userConfig, "postProcSkipSizeValidation") and userConfig.postProcSkipSizeValidation:\n')
+      fPy.write('                        sys.stderr.write("Failed to obtain original file size but skipping validation as requested by user\\n")\n')
+      fPy.write('                        break\n')
+      fPy.write('                    raise\n')
+      fPy.write('            else:\n')
+      fPy.write('                continue\n')
+      fPy.write('        else:\n')
+      fPy.write('            shutil.copyfile(source, "./" + fname)\n')
+      fPy.write('            size = os.stat(source).st_size\n')
+      fPy.write('\n')
+      fPy.write('        try:\n')
+      fPy.write('            if os.stat(os.path.basename(fname)).st_size == size:\n')
+      fPy.write('                break\n')
+      fPy.write('        except:\n')
+      fPy.write('            try:\n')
+      fPy.write('                os.unlink(os.path.basename(fname))\n')
+      fPy.write('            except:\n')
+      fPy.write('                pass\n')
+      fPy.write('    else:\n')
+      fPy.write('        raise RuntimeError("Failed to download " + source)\n\n')
+      fPy.write('    files.append(fname)\n\n')
+
+          # Configure modules
+
+      def addModuleLines(s):
+        step = self._Steps[s]
+        if step['isChain']:
+          for subtarget in step['subTargets']:
+            addModuleLines(subtarget)
+        else:
+          if (isData and 'do4Data' in step and not step['do4Data']) or (not isData and 'do4MC' in step and not step['do4MC']):
+            return
+          if not self.selectSample(iProd, s, iSample):
+            return
+
+      
+          fPy.write('                          '+self.customizeModule(iSample, s)+',\n')
+      spacing = ""
+      if(self._splitEntries is not None):
+        fPy.write('nSplit = {}\n'.format(splits))
+        fPy.write('for f in sourceFiles:\n')
+        fPy.write('    file1 = ROOT.TFile(f)\n')
+        fPy.write('    tree = file1.Get("Events")\n')
+        fPy.write('    entries = tree.GetEntries()\n')
+        fPy.write('    events_per_iteration = int(entries / nSplit)\n')
+        fPy.write(' \n')
+      fPy.write('i = '+str(i)+'\n')
+      fPy.write('first_entry = i * events_per_iteration\n')
+      fPy.write('max_entries = events_per_iteration if i < nSplit - 1 else (entries - first_entry)\n')
+      fPy.write('{}p = PostProcessor(  "."   ,          \n'.format(spacing))
+      fPy.write('{}                    files ,          \n'.format(spacing))
+      if jsonFile != None:
+        fPy.write('{}                    jsonInput='.format(spacing)+jsonFile+' ,       \n')
+      if 'selection' in self._Steps[iStep] :
+        fPy.write('{}                    cut='.format(spacing)+self._Steps[iStep]['selection']+' ,       \n')
+      else:
+        fPy.write('{}                    cut=None ,       \n'.format(spacing))
+      if 'branchsel' in self._Steps[iStep] :
+        fPy.write('{}                    branchsel="'.format(spacing)+self._Steps[iStep]['branchsel']+'",       \n')
+      else:
+        fPy.write('{}                    branchsel=None , \n'.format(spacing))
+      if 'outputbranchsel' in self._Steps[iStep]:
+        fPy.write('{}                    outputbranchsel="'.format(spacing)+self._Steps[iStep]['outputbranchsel']+'",       \n')
+      else:
+        fPy.write('{}                    outputbranchsel=None , \n'.format(spacing))
+      fPy.write('{}                    modules=[        \n'.format(spacing))
+
+      addModuleLines(iStep)
+
+      fPy.write('{}                            ],      \n'.format(spacing))
+      fPy.write('{}                    provenance=True, \n'.format(spacing))
+      if self._jobMode == 'Crab':
+        fPy.write('{}                    fwkJobReport=True, \n'.format(spacing))
+      else:
+        fPy.write('{}                    fwkJobReport=False, \n'.format(spacing))
+      if not haddFileName == None:
+        if self._splitEntries is None:
+          fPy.write('{}                    haddFileName="'.format(spacing)+haddFileName+'", \n')
+        else:
+          name_splitted = haddFileName.split(".root")[0]+"__split{}.root"
+          fPy.write('{}                    haddFileName="'.format(spacing)+name_splitted+'".format(i), \n')
+          fPy.write('{}                    firstEntry = first_entry, \n'.format(spacing))
+          fPy.write('{}                    maxEntries = max_entries, \n'.format(spacing))
+      fPy.write('{}                 ) \n'.format(spacing))
+      fPy.write(' \n')
+
+      # Common footer
+      fPy.write('{}p.run() \n'.format(spacing))
+      fPy.write(' \n')
+
+      if self._splitEntries is not None:
+        fPy.write('haddnano = "./haddnano.py" if os.path.isfile("./haddnano.py") else "haddnano.py"\n')
+        # fPy.write('os.system("\{\} \{\} \{\}".format(haddnano, "*split*", {})) \n'.format(haddFileName))
+        fPy.write('os.system("{{}} {{}} {{}}".format(haddnano, "{}", "*split*root")) \n'.format(haddFileName))
+
+        fPy.write('os.system("rm *split*root")')
+        fPy.write(' \n')
+
+      fPy.write('for fname in files:\n')
+      fPy.write('    try:\n')
+      fPy.write('        os.unlink(fname)\n')
+      fPy.write('        os.rename(fname.replace("_input.root", "_input_Skim.root"), fname.replace("_input.root", "_Skim.root"))\n')
+      fPy.write('    except:\n')
+      fPy.write('        pass\n')
+
+      # Close file
+      fPy.close()
 
 #------------- MODULE CUSTOMIZATION: baseW, CMSSW_Version, ....
 
