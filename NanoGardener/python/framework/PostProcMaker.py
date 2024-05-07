@@ -326,8 +326,8 @@ class PostProcMaker():
      self._sourceDir = None
      if not self._iniStep == 'Prod' :
       #  self._sourceDir = self._Sites[self._LocalSite]['treeBaseDir']+'/'+iProd+'/'+self._iniStep+'/'
-      #  self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
-       self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
+       self._sourceDir = '/eos/cms/store/group/phys_higgs/cmshww/amassiro/HWWNano'+'/'+iProd+'/'+self._iniStep+'/'
+      #  self._sourceDir = '/eos/cms/store/group/phys_smp/Latinos/vbfw/'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/EFT/nano/hadd/'+'/'+iProd+'/'+self._iniStep+'/'
       #  self._sourceDir = '/eos/user/a/abulla/nanoAOD/interference/reco_inter/'+'/'+iProd+'/'+self._iniStep+'/'
 
@@ -666,9 +666,9 @@ class PostProcMaker():
         fPy.write('    entries = tree.GetEntries()\n')
         fPy.write('    events_per_iteration = int(entries / nSplit)\n')
         fPy.write(' \n')
-      fPy.write('i = '+str(i)+'\n')
-      fPy.write('first_entry = i * events_per_iteration\n')
-      fPy.write('max_entries = events_per_iteration if i < nSplit - 1 else (entries - first_entry)\n')
+        fPy.write('i = '+str(i)+'\n')
+        fPy.write('first_entry = i * events_per_iteration\n')
+        fPy.write('max_entries = events_per_iteration if i < nSplit - 1 else (entries - first_entry)\n')
       fPy.write('{}p = PostProcessor(  "."   ,          \n'.format(spacing))
       fPy.write('{}                    files ,          \n'.format(spacing))
       if jsonFile != None:
