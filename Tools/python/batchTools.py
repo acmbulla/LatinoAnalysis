@@ -43,7 +43,7 @@ except NameError:
   REQUEST_CPUS = 1
 
 class batchJobs :
-   def __init__ (self,baseName,prodName,stepList,targetList,batchSplit,postFix='',usePython=False,useBatchDir=True,wDir='',JOB_DIR_SPLIT_READY=False,USE_SINGULARITY=False):
+   def __init__ (self,baseName,prodName,stepList,targetList,batchSplit,postFix='',usePython=False,useBatchDir=True,wDir='',JOB_DIR_SPLIT_READY=False,USE_SINGULARITY=False, makeout=True):
      # baseName   = Gardening, Plotting, ....
      # prodName   = 21Oct_25ns , ...
      # stepList   = list of steps (like l2sel or a set of plots to produce)
@@ -61,10 +61,16 @@ class batchJobs :
          StepName = ''
          for iStep in stepList : StepName+=iStep
        self.subDir   = jobDir+'/'+baseName+'__'+prodName+'__'+StepName
+       self.subDirPy   = jobDirPy+'/'+baseName+'__'+prodName+'__'+StepName
      else:
        self.subDir   = jobDir+'/'+baseName+'__'+prodName
+       self.subDirPy   = jobDirPy+'/'+baseName+'__'+prodName
+
      if not os.path.exists(jobDir) : os.system('mkdir -p '+jobDir)
+     if not os.path.exists(jobDirPy) : os.system('mkdir -p '+jobDirPy)
+
      self.nThreads = 1
+     self.makeout  = makeout
 
      #print stepList 
      #print batchSplit
@@ -100,16 +106,18 @@ class batchJobs :
           
      # Create job and init files (loop on Steps,Targets)
      if not os.path.exists(self.subDir) : os.system('mkdir -p '+self.subDir)
+     if not os.path.exists(self.subDirPy) : os.system('mkdir -p '+self.subDirPy)
      CMSSW=os.environ["CMSSW_BASE"]
      SCRAMARCH=os.environ["SCRAM_ARCH"]
      for jName in self.jobsList:
        if JOB_DIR_SPLIT and self.JOB_DIR_SPLIT_READY :
          subDirExtra = '/' + jName.split('__')[3] 
          if not os.path.exists(self.subDir+subDirExtra) : os.system('mkdir -p '+self.subDir+subDirExtra)
+         if not os.path.exists(self.subDirPy+subDirExtra) : os.system('mkdir -p '+self.subDirPy+subDirExtra)
        else:
          subDirExtra =''
        jFile = open(self.subDir+subDirExtra+'/'+jName+'.sh','w')
-       if usePython : pFile = open(self.subDir+subDirExtra+'/'+jName+'.py','w') 
+       if usePython : pFile = open(self.subDirPy+subDirExtra+'/'+jName+'.py','w') 
        jFile.write('#!/bin/bash\n')
        if self.USE_SINGULARITY : 
          jFileSing = open(self.subDir+subDirExtra+'/'+jName+'_Sing.sh','w')
@@ -121,6 +129,7 @@ class batchJobs :
            jFile.write('#$ -cwd\n')
 
          jFile.write('export X509_USER_PROXY=/afs/cern.ch/user/'+os.environ["USER"][:1]+'/'+os.environ["USER"]+'/.proxy\n')
+         jFile.write('export EOS_MGM_URL=root://eoscms.cern.ch\n')
          if 'latino' in hostName:
            jFile.write('export X509_USER_PROXY=/eos/user/'+os.environ["USER"][:1]+'/'+os.environ["USER"]+'/.proxy\n')
            jFile.write('export EOS_MGM_URL=root://eoscms.cern.ch\n')
@@ -261,7 +270,7 @@ class batchJobs :
          subDirExtra = '/' + jName.split('__')[3]
        else:
          subDirExtra =''
-       pFile = open(self.subDir+subDirExtra+'/'+jName+'.py','a')
+       pFile = open(self.subDirPy+subDirExtra+'/'+jName+'.py','a')
        pFile.write(command+'\n')
        pFile.close()
 
@@ -272,7 +281,10 @@ class batchJobs :
        else:
          subDirExtra =''
        jFile = open(self.subDir+subDirExtra+'/'+jName+'.sh','a')
-       command = 'python '+self.subDir+subDirExtra+'/'+jName+'.py'
+       command = 'xrdcp root://eosuser.cern.ch/'+self.subDirPy+subDirExtra+'/'+jName+'.py .'
+       jFile.write(command+'\n')
+       jFile.write('ls -l'+'\n')
+       command = 'python '+jName+'.py'
        jFile.write(command+'\n')
        jFile.close()
 
@@ -282,8 +294,8 @@ class batchJobs :
        subDirExtra = '/' + jName.split('__')[3]
      else:
        subDirExtra =''
-     print 'Adding to ',self.subDir+subDirExtra+'/'+jName
-     pFile = open(self.subDir+subDirExtra+'/'+jName+'.py','a')
+     print 'Adding to ',self.subDirPy+subDirExtra+'/'+jName
+     pFile = open(self.subDirPy+subDirExtra+'/'+jName+'.py','a')
      pFile.write(command+'\n')
      pFile.close()
 
@@ -293,7 +305,7 @@ class batchJobs :
        subDirExtra = '/' + jName.split('__')[3]
      else:
        subDirExtra =''
-     return self.subDir+subDirExtra+'/'+jName+'.py' 
+     return self.subDirPy+subDirExtra+'/'+jName+'.py' 
 
    def Sub(self,queue='longlunch',IiheWallTime='168:00:00',optTodo=False): 
      # Submit host name to identify the environment
@@ -343,15 +355,21 @@ class batchJobs :
            jdsFile.write('executable = '+self.subDir+subDirExtra+'/'+jName+'.sh\n')
            jdsFile.write('universe = vanilla\n')
            #jdsFile.write('use_x509userproxy = true\n')
-           jdsFile.write('output = '+self.subDir+subDirExtra+'/'+jName+'.out\n')
-           jdsFile.write('error = '+self.subDir+subDirExtra+'/'+jName+'.err\n')
-           jdsFile.write('log = '+self.subDir+subDirExtra+'/'+jName+'.log\n')
+           if self.makeout:
+            jdsFile.write('output = '+self.subDir+subDirExtra+'/'+jName+'.out\n')
+            jdsFile.write('error = '+self.subDir+subDirExtra+'/'+jName+'.err\n')
+            jdsFile.write('log = '+self.subDir+subDirExtra+'/'+jName+'.log\n')
+           else:
+            jdsFile.write('output = /dev/null\n')
+            jdsFile.write('error = /dev/null\n')
+            jdsFile.write('log = /dev/null\n')
            if CONDOR_ACCOUNTING_GROUP:
              jdsFile.write('+AccountingGroup = '+CONDOR_ACCOUNTING_GROUP+'\n')
              jdsFile.write('accounting_group = '+CONDOR_ACCOUNTING_GROUP+'\n')
            if AUTO_CONDOR_RETRY:
              jdsFile.write('on_exit_hold = (ExitBySignal == True) || (ExitCode != 0)\n')
              jdsFile.write('periodic_release =  (NumJobStarts < 3) && ((CurrentTime - EnteredCurrentStatus) > (60*3))\n')
+           jdsFile.write('MY.WantOS = "el7"\n')
            jdsFile.write('request_cpus = '+str(REQUEST_CPUS)+'\n')
            jdsFile.write('+JobFlavour = "'+queue+'"\n')
            jdsFile.write('queue\n')
@@ -442,9 +460,15 @@ class batchJobs :
 
        jds = 'executable = $(JName).sh\n'
        jds += 'universe = vanilla\n'
-       jds += 'output = $(JName).out\n'
-       jds += 'error = $(JName).err\n'
-       jds += 'log = $(JName).log\n'
+       if self.makeout:
+        jds += 'output = $(JName).out\n'
+        jds += 'error = $(JName).err\n'
+        jds += 'log = $(JName).log\n'
+       else: 
+        jds += 'output = /dev/null\n'
+        jds += 'error = /dev/null\n'
+        jds += 'log = /dev/null\n'
+       jds += 'MY.WantOS = "el7"\n'
        #jds += 'use_x509userproxy = true\n'
        jds += 'request_cpus = '+str(REQUEST_CPUS)+'\n'
        if CONDOR_ACCOUNTING_GROUP:
@@ -690,9 +714,14 @@ def batchResub(Dir='ALL',queue='longlunch',requestCpus=1,IiheWallTime='168:00:00
           jdsFile = open(subDir+'/'+jName+'.jds','w')
           jdsFile.write('executable = '+subDir+'/'+jName+'.sh\n')
           jdsFile.write('universe = vanilla\n')
-          jdsFile.write('output = '+subDir+'/'+jName+'.out\n')
-          jdsFile.write('error = '+subDir+'/'+jName+'.err\n')
-          jdsFile.write('log = '+subDir+'/'+jName+'.log\n')
+          if self.makeout:
+            jdsFile.write('output = '+subDir+'/'+jName+'.out\n')
+            jdsFile.write('error = '+subDir+'/'+jName+'.err\n')
+            jdsFile.write('log = '+subDir+'/'+jName+'.log\n')
+          else:
+            jdsFile.write('output = /dev/null\n')
+            jdsFile.write('error = /dev/null\n')
+            jdsFile.write('log = /dev/null\n')
           jdsFile.write('request_cpus = '+str(REQUEST_CPUS)+'\n')
           if CONDOR_ACCOUNTING_GROUP:
             jdsFile.write('+AccountingGroup = '+CONDOR_ACCOUNTING_GROUP+'\n')
@@ -768,9 +797,14 @@ def batchResub(Dir='ALL',queue='longlunch',requestCpus=1,IiheWallTime='168:00:00
       if scheduler == 'condor':
         jds = 'executable = '+subDir+'/$(JName).sh\n'
         jds += 'universe = vanilla\n'
-        jds += 'output = '+subDir+'/$(JName).out\n'
-        jds += 'error = '+subDir+'/$(JName).err\n'
-        jds += 'log = '+subDir+'/$(JName).log\n'
+        if self.makeout:
+          jds += 'output = '+subDir+'/$(JName).out\n'
+          jds += 'error = '+subDir+'/$(JName).err\n'
+          jds += 'log = '+subDir+'/$(JName).log\n'
+        else:
+          jds += 'output = /dev/null\n'
+          jds += 'error = /dev/null\n'
+          jds += 'log = /dev/null\n'
         jds += 'request_cpus = '+str(REQUEST_CPUS)+'\n'
         jds += '+JobFlavour = "'+queue+'"\n'
         if CONDOR_ACCOUNTING_GROUP:
